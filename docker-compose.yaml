@@ -43,9 +43,7 @@ services:
       - ./connectors:/opt/connectors/script:ro
     command: >
       /bin/bash -c "/opt/connectors/script/fill-examples.sh"
-    depends_on:
-      app:
-        condition: service_healthy
+
   
   deletion:
     build:
@@ -96,9 +94,6 @@ services:
       - ./connectors/openml/:/opt/connectors/script:ro
     command: >
       /bin/bash -c "/opt/connectors/script/entry.sh"
-    depends_on:
-      app:
-        condition: service_healthy
 
   zenodo-dataset-connector:
     profiles: ["zenodo-datasets"]
@@ -124,6 +119,7 @@ services:
     image: mysql
     container_name: sqlserver
     env_file: .env
+    restart: always 
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
     volumes:
@@ -140,6 +136,7 @@ services:
     image: quay.io/keycloak/keycloak
     container_name: keycloak
     env_file: .env
+    restart: always
     environment:
       - REDIRECT_URIS=$REDIRECT_URIS
       - POST_LOGOUT_REDIRECT_URIS=$POST_LOGOUT_REDIRECT_URIS
@@ -172,6 +169,7 @@ services:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.8.2
     container_name: elasticsearch
     env_file: .env
+    restart: always
     environment:
       - ES_JAVA_OPTS=$ES_JAVA_OPTS
       - ELASTIC_USER=$ES_USER
