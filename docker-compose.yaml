@@ -94,6 +94,9 @@ services:
       - ./connectors/openml/:/opt/connectors/script:ro
     command: >
       /bin/bash -c "/opt/connectors/script/entry.sh"
+    depends_on:
+      app:
+        condition: service_healthy
 
   zenodo-dataset-connector:
     profiles: ["zenodo-datasets"]
