@@ -17,4 +17,10 @@ class SearchRouterExperiments(SearchRouter[Experiment]):
 
     @property
     def indexed_fields(self):
-        return {"name", "description_plain", "description_html"}
+        return {"description_plain", "description_html"}
+        #return {"name", "platform", "alternative_name", "application_area", "description_plain", "description_html", "industrial_sector", "keyword", "scientific_domain", "research_area"}
+
+    # @indexed_fields.setter
+    # def add_indexed_fields(self, new_fields: str):
+    #     """Setter method to set indexed_fields"""
+    #     self._indexed_fields.add(new_fields)

@@ -17,4 +17,10 @@ class SearchRouterOrganisations(SearchRouter[Organisation]):
 
     @property
     def indexed_fields(self):
-        return {"name", "legal_name", "description_plain", "description_html"}
+        return {"legal_name", "description_plain", "description_html"}
+        #return {"name", "platform", "legal_name", "alternative_name", "ai_relevance", "application_area", "description_plain", "description_html", "industrial_factor", "research_area", "scientific_domain", "type"}
+
+    # @indexed_fields.setter
+    # def add_indexed_fields(self, new_fields: str):
+    #     """Setter method to set indexed_fields"""
+    #     self._indexed_fields.add(new_fields)

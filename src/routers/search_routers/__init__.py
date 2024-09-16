@@ -8,6 +8,7 @@ from .search_router_organisations import SearchRouterOrganisations
 from .search_router_projects import SearchRouterProjects
 from .search_router_publications import SearchRouterPublications
 from .search_router_services import SearchRouterServices
+from .search_router_all_entities import AllEntitySearchRouter
 from ..search_router import SearchRouter
 
 router_list: list[SearchRouter] = [
@@ -21,4 +22,5 @@ router_list: list[SearchRouter] = [
     SearchRouterProjects(),
     SearchRouterPublications(),
     SearchRouterServices(),
+    AllEntitySearchRouter(),
 ]

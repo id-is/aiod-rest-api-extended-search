@@ -78,6 +78,14 @@ def add_routes(app: FastAPI, url_prefix=""):
             and (count := router.get_resource_count_func()(detailed=True))
         }
 
+    #-----allages gia multi-entity search--------
+
+    # Instantiate AllEntitySearchRouter and include it
+    #all_entity_search_router = AllEntitySearchRouter()
+    #app.include_router(all_entity_search_router.create(url_prefix))
+
+    #-----telos allages gia multi-entity search--------
+
     for router in (
         resource_routers.router_list
         + parent_routers.router_list

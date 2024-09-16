@@ -17,4 +17,10 @@ class SearchRouterMLModels(SearchRouter[MLModel]):
 
     @property
     def indexed_fields(self):
-        return {"name", "description_plain", "description_html"}
+        return {"name", "description_plain", "description_html", "platform", "version","date_published", "same_as", "is_accessible_for_free","pid", "license_identifier"}
+
+
+    # @indexed_fields.setter
+    # def add_indexed_fields(self, new_fields: str):
+    #     """Setter method to set indexed_fields"""
+    #     self._indexed_fields.add(new_fields)

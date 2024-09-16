@@ -5,7 +5,7 @@ not be able to modify this date yourself in a POST request, but you should retri
 request.
 """
 
-from typing import Type, Tuple, TYPE_CHECKING
+from typing import Type, Tuple, TYPE_CHECKING, Optional
 
 from pydantic import create_model
 from sqlmodel import SQLModel, Field
@@ -89,7 +89,10 @@ def resource_read(resource_class: Type["AIoDConcept"]) -> Type[SQLModel]:
     """
     relationships = get_relationships(resource_class)
     field_definitions = _get_field_definitions_read(resource_class, relationships)
-    field_definitions.update({"identifier": (int, Field())})
+    field_definitions.update({
+        "identifier": (int, Field()),
+        "type": (Optional[str], Field(default=None))
+    })
     model = create_model(
         resource_class.__name__ + "Read", __base__=resource_class.__base__, **field_definitions
     )

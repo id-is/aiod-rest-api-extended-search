@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from pydantic.generics import GenericModel
 from sqlmodel import SQLModel, select, Field
 from starlette import status
+from database.model.dataset.dataset import Dataset
 
 from database.model.concept.aiod_entry import AIoDEntryRead
 from database.model.concept.concept import AIoDConcept
@@ -14,6 +15,17 @@ from database.model.resource_read_and_create import resource_read
 from database.session import DbSession
 from error_handling import as_http_exception
 from .search_routers.elasticsearch import ElasticsearchSingleton
+import sys
+
+
+from database.model.dataset.dataset import Dataset
+from database.model.ai_asset.ai_asset import AIAsset
+from database.model.models_and_experiments.ml_model import MLModel
+
+CLASS_MAPPING = {
+    'dataset': Dataset,
+    'ml_model': MLModel
+}
 
 SORT = {"identifier": "asc"}
 LIMIT_MAX = 1000
@@ -22,15 +34,12 @@ RESOURCE = TypeVar("RESOURCE", bound=AIoDConcept)
 RESOURCE_READ = TypeVar("RESOURCE_READ", bound=BaseModel)
 
 
-class SearchResult(GenericModel, Generic[RESOURCE_READ]):
+class SearchResult(BaseModel):
     total_hits: int = Field(description="The total number of results.")
-    resources: list[RESOURCE_READ] = Field(description="The resources matching the search query.")
-    limit: int = Field(
-        description="The maximum number of returned results, as specified in the " "input."
-    )
+    resources: list = Field(description="The resources matching the search query.")
+    limit: int = Field(description="The maximum number of returned results, as specified in the input.")
     offset: int = Field(description="The offset, as specified in the input.")
-
-
+   
 class SearchRouter(Generic[RESOURCE], abc.ABC):
     """
     Providing search functionality in ElasticSearch
@@ -63,10 +72,18 @@ class SearchRouter(Generic[RESOURCE], abc.ABC):
     @abc.abstractmethod
     def indexed_fields(self) -> set[str]:
         """The set of indexed fields"""
+    
+    # @indexed_fields.setter
+    # def add_indexed_fields(self, new_fields: str):
+    #     """Setter method to set indexed_fields"""
+    #     self._indexed_fields.add(new_fields)
+
 
     def create(self, url_prefix: str) -> APIRouter:
+        #self.add_indexed_fields("combined")
         router = APIRouter()
-        read_class = resource_read(self.resource_class)  # type: ignore
+        #print(self.indexed_fields, file = sys.stderr)
+        # read_class = resource_read(self.resource_class)  # type: ignore resource_read(Dataset)
         indexed_fields: TypeAlias = Literal[tuple(self.indexed_fields)]  # type: ignore
 
         @router.get(
@@ -91,6 +108,12 @@ class SearchRouter(Generic[RESOURCE], abc.ABC):
                     "artifact.",
                 ),
             ] = None,
+            combined_field: Annotated[
+                list[Literal["combined"]] | None,
+                Query(
+                    description="Search in all fields",
+                ),
+            ] = None,
             platforms: Annotated[
                 list[str] | None,
                 Query(
@@ -101,13 +124,6 @@ class SearchRouter(Generic[RESOURCE], abc.ABC):
             ] = None,
             limit: Annotated[int, Query(ge=1, le=LIMIT_MAX)] = 10,
             offset: Annotated[int, Query(ge=0)] = 0,
-            get_all: Annotated[
-                bool,
-                Query(
-                    description="If true, a request to the database is made to retrieve all data. "
-                    "If false, only the indexed information is returned.",
-                ),
-            ] = False,
         ):
             try:
                 with DbSession() as session:
@@ -135,48 +151,20 @@ class SearchRouter(Generic[RESOURCE], abc.ABC):
                 index=self.es_index, query=query, from_=offset, size=limit, sort=SORT
             )
             total_hits = result["hits"]["total"]["value"]
-            if get_all:
-                identifiers = [hit["_source"]["identifier"] for hit in result["hits"]["hits"]]
-                resources: list[SQLModel] = self._db_query(
-                    read_class, self.resource_class, identifiers
-                )
-            else:
-                resources: list[Type[read_class]] = [  # type: ignore
-                    self._cast_resource(read_class, hit["_source"])
-                    for hit in result["hits"]["hits"]
-                ]
-            return SearchResult[read_class](  # type: ignore
+           
+            resources: list[Type[read_class]] = [  # type: ignore
+                self._cast_resource(resource_read(CLASS_MAPPING[hit['_index']]), hit["_source"])
+                for hit in result["hits"]["hits"]
+            ]
+
+            return SearchResult(  # type: ignore
                 total_hits=total_hits,
                 resources=resources,
                 limit=limit,
                 offset=offset,
             )
-
         return router
 
-    def _db_query(
-        self,
-        read_class: Type[SQLModel],
-        resource_class: RESOURCE,
-        identifiers: list[int],
-    ) -> list[SQLModel]:
-        try:
-            with DbSession() as session:
-                filter_ = resource_class.identifier.in_(identifiers)  # type: ignore[attr-defined]
-                query = select(resource_class).where(filter_)
-                resources = session.scalars(query).all()
-                identifiers_found = {resource.identifier for resource in resources}
-                identifiers_missing = set(identifiers) - identifiers_found
-                if identifiers_missing:
-                    raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail="Some resources, with identifiers "
-                        f"{', '.join(map(str, identifiers_missing))}, could not be found in "
-                        "the database.",
-                    )
-                return [read_class.from_orm(resource) for resource in resources]
-        except Exception as e:
-            raise as_http_exception(e)
 
     def _cast_resource(
         self, read_class: Type[SQLModel], resource_dict: dict[str, Any]
@@ -184,14 +172,19 @@ class SearchRouter(Generic[RESOURCE], abc.ABC):
         kwargs = {
             self.key_translations.get(key, key): val
             for key, val in resource_dict.items()
-            if key != "type" and not key.startswith("@")
         }
+
         resource = read_class(**kwargs)
         resource.aiod_entry = AIoDEntryRead(
             date_modified=resource_dict["date_modified"], status=None
         )
+
         resource.description = {
             "plain": resource_dict["description_plain"],
             "html": resource_dict["description_html"],
         }
+
+        resource.type = resource_dict["type"]
+
+        
         return resource
