@@ -11,6 +11,7 @@ retrieve, and share AI resources. It forms the connection between user-facing co
 as the AIoD website or Python Client API, and the backend. The metadata for datasets, models 
 and other resources can be accessed, added, updated and deleted through this API. 
 
+
 ## Architecture
 All metadata is stored in the AIoD metadata database. For every instance of the API (there will 
 be multiple running instances, for reliability and performance), an instance of this database 
